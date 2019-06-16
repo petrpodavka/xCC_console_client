@@ -1,29 +1,62 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "connect.h"
 
-#pragma comment (lib, "Ws2_32.lib")
-#pragma comment (lib, "Mswsock.lib")
-#pragma comment (lib, "AdvApi32.lib")
+#ifdef _WIN32
+	typedef SOCKET sock;
+	#define INVALID_SOCK INVALID_SOCKET
+#else
+	typedef int sock;
+	#define INVALID_SOCK -1
+	#define SOCKET_ERROR -1
+	#define SD_SEND SHUT_WR
+#endif
 
-SOCKET xCC_socket;
+sock xCC_socket;
+
+int sockInit(void)
+{
+#ifdef _WIN32
+	WSADATA wsa_data;
+	return WSAStartup(MAKEWORD(2, 2), &wsa_data);
+#else
+	return 0;
+#endif
+}
+
+int sockQuit(void)
+{
+#ifdef _WIN32
+	return WSACleanup();
+#else
+	return 0;
+#endif
+}
+
+bool sockValid(sock socket) {
+#ifdef _WIN32
+	return socket != INVALID_SOCK;
+#else
+	return socket >= 0;
+#endif
+}
 
 int xCC_connect(std::string address, int port)
 {
-	WSADATA wsaData;
-	xCC_socket = INVALID_SOCKET;
+	xCC_socket = INVALID_SOCK;
 
 	struct addrinfo* result = NULL, * ptr = NULL, hints;
 	int iResult;
 
 	// Initialize Winsock
-	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	iResult = sockInit();
 	if (iResult != 0) {
 		printf("WSAStartup failed with error: %d\n", iResult);
 		return 1;
 	}
 
-	ZeroMemory(&hints, sizeof(hints));
+	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
@@ -32,7 +65,7 @@ int xCC_connect(std::string address, int port)
 	iResult = getaddrinfo(address.c_str(), std::to_string(port).c_str(), &hints, &result);
 	if (iResult != 0) {
 		printf("getaddrinfo failed with error: %d\n", iResult);
-		WSACleanup();
+		sockQuit();
 		return 1;
 	}
 
@@ -41,17 +74,27 @@ int xCC_connect(std::string address, int port)
 
 		// Create a SOCKET for connecting to server
 		xCC_socket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-		if (xCC_socket == INVALID_SOCKET) {
+		if (!sockValid(xCC_socket)) {
+#ifdef _WIN32
 			printf("socket failed with error: %ld\n", WSAGetLastError());
-			WSACleanup();
+#else
+			printf("socket failed with error: %d\n", xCC_socket);
+#endif // _WIN32
+
+			
+			sockQuit();
 			return 1;
 		}
 
 		// Connect to server.
 		iResult = connect(xCC_socket, ptr->ai_addr, (int)ptr->ai_addrlen);
 		if (iResult == SOCKET_ERROR) {
+#ifdef _WIN32
 			closesocket(xCC_socket);
-			xCC_socket = INVALID_SOCKET;
+#else
+			close(xCC_socket);
+#endif
+			xCC_socket = INVALID_SOCK;
 			continue;
 		}
 		break;
@@ -59,8 +102,8 @@ int xCC_connect(std::string address, int port)
 
 	freeaddrinfo(result);
 
-	if (xCC_socket == INVALID_SOCKET) {
-		WSACleanup();
+	if (!sockValid(xCC_socket)) {
+		sockQuit();
 		return 1;
 	}
 
@@ -69,16 +112,21 @@ int xCC_connect(std::string address, int port)
 
 int xCC_send(std::vector<uint8_t> data)
 {
-	if (xCC_socket == INVALID_SOCKET)
+	if (!sockValid(xCC_socket))
 		return -1;
 
 	int iResult;
 	
 	iResult = send(xCC_socket, (char*) &data[0], data.size(), 0);
 	if (iResult == SOCKET_ERROR) {
-		printf("send failed with error: %d\n", WSAGetLastError());
+#ifdef _WIN32
+		printf("send failed with error: %ld\n", WSAGetLastError());
 		closesocket(xCC_socket);
-		WSACleanup();
+#else
+		printf("send failed with error: %d\n", iResult);
+		close(xCC_socket);
+#endif // _WIN32
+		sockQuit();
 		return 1;
 	}
 	return 0;
@@ -86,7 +134,7 @@ int xCC_send(std::vector<uint8_t> data)
 
 int xCC_receive(std::vector<uint8_t>& data)
 {
-	if (xCC_socket == INVALID_SOCKET)
+	if (!sockValid(xCC_socket))
 		return -1;
 
 	char recvbuf[DEFAULT_BUFLEN];
@@ -106,7 +154,11 @@ int xCC_receive(std::vector<uint8_t>& data)
 		else if (result == 0)
 			printf("Connection closed\n");
 		else
+#ifdef _WIN32
 			printf("recv failed with error: %d\n", WSAGetLastError());
+#else
+			printf("recv failed with error: %d\n", result);
+#endif
 
 	} while (result > 0 && recvbuf[result-1] != (char) 0xFD);
 	
@@ -116,6 +168,10 @@ int xCC_receive(std::vector<uint8_t>& data)
 void xCC_shutdown_and_cleanup() 
 {
 	shutdown(xCC_socket, SD_SEND);
+#ifdef _WIN32
 	closesocket(xCC_socket);
-	WSACleanup();
+#else
+	close(xCC_socket);
+#endif
+	sockQuit();
 }

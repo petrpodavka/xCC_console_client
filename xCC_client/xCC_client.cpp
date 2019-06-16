@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 	result = xCC_connect(address, port);
 
 	if (result != 0) {
-		std::cout << "Unable to connect to server " << address << ":" << port;
+		std::cout << "Unable to connect to server " << address << ":" << port << std::endl;
 		return 0;
 	}
 		
@@ -40,14 +40,14 @@ int main(int argc, char** argv)
 	int input;
 	while (1)
 	{
-		Command cmd(OUTSIDE_TEMP);
+		Message msg = Message(Operation::get_outside_temp);
 		
 		std::cin >> input;	
 		switch (input) {
 		case 0:
 			goto exit;
 		case 1:
-			cmd.add((float)25.48);
+			msg.m_command.addData((float)25.48);
 			break;
 		case 2:
 			break;
@@ -57,7 +57,9 @@ int main(int argc, char** argv)
 
 		try
 		{
-			xCC_send(compose_message(cmd));
+			msg.composeFrame();
+
+			xCC_send(msg.m_frame);
 			xCC_receive(buffer);
 
 			std::cout << "raw data (" << buffer.size() << " bytes): 0x";
@@ -67,14 +69,17 @@ int main(int argc, char** argv)
 			}
 			std::cout << std::endl;
 
-			buffer = decompose_message(buffer);
+			msg.m_frame = buffer;
+			msg.decomposeFrame();
 
 			float temp;
-			read(&temp, buffer);
+			msg.m_command.readData(&temp);
+
 			std::cout << "Outside temperature is " << std::fixed << std::setprecision(2) << temp << " C" << std::endl;
 		}
-		catch (std::exception & e)
+		catch (const std::exception & ex)
 		{
+			std::cerr << "Exception: " << ex.what() << std::endl;
 			xCC_shutdown_and_cleanup();
 			return 1;
 		}
