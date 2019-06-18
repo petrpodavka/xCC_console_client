@@ -152,13 +152,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="connect.cpp" />
+    <ClCompile Include="xCC_connect.cpp" />
     <ClCompile Include="xCC_client.cpp" />
     <ClCompile Include="xCC_command.cpp" />
     <ClCompile Include="xCC_protocol.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="connect.h" />
+    <ClInclude Include="xCC_connect.h" />
     <ClInclude Include="xCC_command.h" />
     <ClInclude Include="xCC_protocol.h" />
   </ItemGroup>

@@ -1,5 +1,5 @@
-#include "xCC_protocol.h"
 #include <stdexcept>
+#include "xCC_protocol.h"
 
 std::vector<uint8_t> decompose_message(std::vector<uint8_t> message)
 {
@@ -7,6 +7,10 @@ std::vector<uint8_t> decompose_message(std::vector<uint8_t> message)
 	data.insert(data.end(), &message[5], &message[5 + (int) message[4]]);
 
 	return data;
+}
+
+Message::Message(std::string commandString) {
+
 }
 
 Message::Message(Operation operation) {
@@ -22,6 +26,9 @@ Message::Message(std::vector<uint8_t> frame) {
 }
 
 void Message::composeFrame() {
+	if (m_command.getOperation() == Operation::unknown)
+		throw std::invalid_argument("Unable to compose frame for unknown operation");
+
 	auto operation = static_cast<short>(m_command.getOperation());
 	auto data = m_command.getData();
 

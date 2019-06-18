@@ -19,6 +19,7 @@ public:
 	Command m_command;
 	std::vector<uint8_t> m_frame;
 
+	Message(std::string commandString);
 	Message(Operation operation);
 	Message(Command command);
 	Message(std::vector<uint8_t> frame);
