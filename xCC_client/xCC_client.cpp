@@ -102,6 +102,7 @@ int main(int argc, char** argv)
 			printBuffer(msg.m_frame);
 		}
 		msg.decomposeFrame();
+		std::cout << msg.readAllData();
 	}
 	catch (const std::exception & ex)
 	{

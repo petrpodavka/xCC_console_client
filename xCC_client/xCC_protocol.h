@@ -27,6 +27,10 @@ public:
 	void composeFrame();
 	void decomposeFrame();
 
+	std::string readAllData();
+
 private:
 	char computeCRC(std::vector<uint8_t> frame);
 };
+
+std::vector<std::string> split(const std::string& s, char delim);

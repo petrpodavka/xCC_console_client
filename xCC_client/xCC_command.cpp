@@ -1,3 +1,5 @@
+#include <iomanip> // setprecision
+#include <sstream> // stringstream
 #include "xCC_command.h"
 
 Operation Command::getOperation()
@@ -10,6 +12,43 @@ std::vector<uint8_t> Command::getData()
 	return m_data;
 }
 
+std::string getMessage(std::string valueString, DataType type, std::string what) {
+	return "Value '" + valueString + "' not parsable as " + DataTypeString.at(type) + " (" + what + ")";
+}
+
+void Command::addData(std::string valueString, DataType type) {
+	switch (type)
+	{
+	case DataType::BOOL:
+		if (valueString == "true") {
+			addData<char>(1);
+			break;
+		}
+		else if (valueString == "false") {
+			addData<char>(0);
+			break;
+		}
+		throw std::invalid_argument(getMessage(valueString, type, "true/false"));
+	case DataType::REAL:
+		try {
+			addData<float>(std::stof(valueString));
+			break;
+		}
+		catch (std::exception& e) {
+			throw std::invalid_argument(getMessage(valueString, type, e.what()));
+		}
+	case DataType::BYTE:
+	case DataType::EKV:
+	case DataType::INT:
+	case DataType::NPROG:
+	case DataType::TIME:
+	case DataType::TIMETABLE:
+	case DataType::USINT:
+	default:
+		throw std::invalid_argument("DataType " + DataTypeString.at(type) + " not implemented yet");
+	}
+}
+
 template<typename T> void Command::addData(T x)
 {
 	uint8_t* p = (uint8_t*)& x;
@@ -20,11 +59,41 @@ template<typename T> void Command::addData(T x)
 	}
 }
 
+std::string Command::readData(DataType type) {
+	std::stringstream stream;
+	
+	switch (type)
+	{
+	case DataType::BOOL:
+		char valueChar;
+		readData<char>(&valueChar);
+
+		if (valueChar == 1)
+			return "true";
+		else 
+			return "false";
+	case DataType::REAL:
+		float valueFloat;
+		readData<float>(&valueFloat);
+
+		stream << std::fixed << std::setprecision(3) << valueFloat;
+		return stream.str();
+	case DataType::BYTE:
+	case DataType::EKV:
+	case DataType::INT:
+	case DataType::NPROG:
+	case DataType::TIME:
+	case DataType::TIMETABLE:
+	case DataType::USINT:
+	default:
+		throw std::invalid_argument("DataType " + DataTypeString.at(type) + " not implemented yet");
+	}
+}
+
 template<typename T> void Command::readData(T* x) {
 	if (m_data.size() < sizeof(T)) {
 		throw std::runtime_error("Unable to read data of size " + std::to_string(sizeof(T)) + " bytes from m_data of size " + std::to_string(m_data.size()) + " bytes");
 	}
-
 
 	uint8_t* p = (uint8_t*)x;
 

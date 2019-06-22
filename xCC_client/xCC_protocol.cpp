@@ -1,16 +1,46 @@
 #include <stdexcept>
+#include <iostream> 
+#include <string> 
+#include <sstream> 
 #include "xCC_protocol.h"
+#include "xCC_command.h"
 
-std::vector<uint8_t> decompose_message(std::vector<uint8_t> message)
-{
-	std::vector<uint8_t> data;
-	data.insert(data.end(), &message[5], &message[5 + (int) message[4]]);
+std::vector<std::string> split(const std::string& s, char delim) {
+	std::vector<std::string> result;
+	std::stringstream ss(s);
+	std::string item;
 
-	return data;
+	while (std::getline(ss, item, delim)) {
+		result.push_back(item);
+	}
+
+	return result;
 }
 
 Message::Message(std::string commandString) {
+	auto parts = split(commandString, ';');
 
+	if (parts.size() == 0)
+		throw std::invalid_argument("command string cannot be empty");
+
+	Operation operation;
+	try {
+		operation = static_cast<Operation>(std::stoi(parts[0]));
+	}
+	catch(std::exception &e) {
+		auto msg = "Operation " + parts[0] + " is not valid operation (" + e.what() + ")";
+		throw std::invalid_argument(msg);
+	}
+
+	m_command = Command(operation);
+
+	auto configMap = OperationConfigMap.at(operation).first;
+	for (size_t i = 1; i < parts.size(); i++) {
+		auto type = configMap[i - 1];
+		auto valueString = parts[i];
+
+		m_command.addData(valueString, type);
+	}
 }
 
 Message::Message(Operation operation) {
@@ -67,4 +97,16 @@ char Message::computeCRC(std::vector<uint8_t> frame)
 	}
 
 	return crc;
+}
+
+std::string Message::readAllData() {
+	std::string response = "";
+	auto configMap = OperationConfigMap.at(m_command.getOperation()).second;
+	for (auto& type : configMap) {
+		if (response.length() > 0)
+			response += " ";
+		response += m_command.readData(type);
+	}
+
+	return response;
 }
