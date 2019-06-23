@@ -17,6 +17,9 @@ std::string getMessage(std::string valueString, DataType type, std::string what)
 }
 
 void Command::addData(std::string valueString, DataType type) {
+	unsigned int valueUint;
+	int valueInt;
+
 	switch (type)
 	{
 	case DataType::BOOL:
@@ -37,13 +40,45 @@ void Command::addData(std::string valueString, DataType type) {
 		catch (std::exception& e) {
 			throw std::invalid_argument(getMessage(valueString, type, e.what()));
 		}
-	case DataType::BYTE:
-	case DataType::EKV:
-	case DataType::INT:
-	case DataType::NPROG:
-	case DataType::TIME:
-	case DataType::TIMETABLE:
 	case DataType::USINT:
+	case DataType::BYTE:
+		try {
+			valueUint = std::stoul(valueString);
+		}
+		catch (std::exception & e) {
+			throw std::invalid_argument(getMessage(valueString, type, e.what()));
+		}
+
+		if (valueUint < std::numeric_limits<unsigned char>::min() || valueUint > std::numeric_limits<unsigned char>::max())
+			throw std::invalid_argument(getMessage(valueString, type, "must be 0 - 255"));
+
+		addData<char>((char)valueUint);
+		break;
+	case DataType::INT:
+		try {
+			valueInt = std::stoi(valueString);
+		}
+		catch (std::exception & e) {
+			throw std::invalid_argument(getMessage(valueString, type, e.what()));
+		}
+
+		if (valueInt < std::numeric_limits<short>::min() || valueInt > std::numeric_limits<short>::max())
+			throw std::invalid_argument(getMessage(valueString, type, "must be -32768 - 32767"));
+
+		addData<short>((short)valueInt);
+		break;
+	case DataType::TIME:
+		try {
+			valueInt = std::stoi(valueString);
+		}
+		catch (std::exception & e) {
+			throw std::invalid_argument(getMessage(valueString, type, e.what()));
+		}
+		addData<int>(valueInt);
+		break;
+	case DataType::EKV:
+	case DataType::NPROG:
+	case DataType::TIMETABLE:
 	default:
 		throw std::invalid_argument("DataType " + DataTypeString.at(type) + " not implemented yet");
 	}
@@ -61,30 +96,45 @@ template<typename T> void Command::addData(T x)
 
 std::string Command::readData(DataType type) {
 	std::stringstream stream;
-	
+	char valueChar;
+	float valueFloat;
+	short valueShort;
+	int valueInt;
+
 	switch (type)
 	{
 	case DataType::BOOL:
-		char valueChar;
 		readData<char>(&valueChar);
 
 		if (valueChar == 1)
 			return "true";
 		else 
 			return "false";
-	case DataType::REAL:
-		float valueFloat;
+	case DataType::REAL:	
 		readData<float>(&valueFloat);
 
 		stream << std::fixed << std::setprecision(3) << valueFloat;
 		return stream.str();
-	case DataType::BYTE:
-	case DataType::EKV:
-	case DataType::INT:
-	case DataType::NPROG:
-	case DataType::TIME:
-	case DataType::TIMETABLE:
 	case DataType::USINT:
+	case DataType::BYTE:
+		readData<char>(&valueChar);
+
+		stream << (unsigned int)valueChar;
+		return stream.str();
+	case DataType::INT:
+		readData<short>(&valueShort);
+
+		stream << valueShort;
+		return stream.str();
+	case DataType::TIME:
+		readData<int>(&valueInt);
+
+		stream << valueInt;
+		return stream.str();
+	case DataType::EKV:
+	case DataType::NPROG:
+	case DataType::TIMETABLE:
+	
 	default:
 		throw std::invalid_argument("DataType " + DataTypeString.at(type) + " not implemented yet");
 	}

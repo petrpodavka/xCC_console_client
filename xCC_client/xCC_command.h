@@ -35,7 +35,7 @@ enum Operation {
 
 const std::map<Operation, std::pair<std::vector<DataType>, std::vector<DataType>>> OperationConfigMap = {
 	{Operation::get_outside_temp, { 
-		std::vector<DataType>{DataType::REAL},
+		std::vector<DataType>{},
 		std::vector<DataType>{DataType::REAL} 
 	}}
 };
