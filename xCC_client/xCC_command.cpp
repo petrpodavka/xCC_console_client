@@ -1,5 +1,6 @@
 #include <iomanip> // setprecision
 #include <sstream> // stringstream
+#include <limits>
 #include "xCC_command.h"
 
 Operation Command::getOperation()
