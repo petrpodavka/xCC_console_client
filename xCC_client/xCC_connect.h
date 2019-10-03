@@ -7,6 +7,7 @@
 	#include <arpa/inet.h>
 	#include <netdb.h>  /* Needed for getaddrinfo() and freeaddrinfo() */
 	#include <unistd.h> /* Needed for close() */
+	#include <stdexcept>
 #endif
 #include <vector>
 #include <string>
